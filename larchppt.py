@@ -7,7 +7,7 @@ sns.set_context("notebook")
 import larch
 from larch import Group
 from larch.xafs import autobk, xftf, mback,pre_edge, pre_edge_baseline
-from larch.io import read_athena, read_ascii
+from larch.io import read_athena, read_ascii, create_athena
 
 from pptemp import pptemp
 from datetime import date
@@ -15,6 +15,8 @@ from datetime import date
 import glob
 import re
 import os
+
+from PIL import Image
 
 class larchppt(object):
     def __init__(self, *args):
@@ -92,18 +94,21 @@ class larchppt(object):
 
     def calc_mu(self):
         if self.data_type == "QAS":
-            # Create transmission group
+            # Create transmission group  
             self.transmission.title = "Transmission"
+            self.transmission.filename = "Transmission"
             self.transmission.energy = self.data.energy
             self.transmission.mu = -np.log(self.data.it/self.data.i0)
 
             # Create fluorescence group
             self.fluorescence.title = "Fluorescence"
+            self.fluorescence.filename = "Fluorescence"
             self.fluorescence.energy = self.data.energy
             self.fluorescence.mu = self.data.iff/self.data.i0
             
             # Create reference group
             self.reference.title = "Reference"
+            self.reference.filename = "Reference"
             self.reference.energy = self.data.energy
             self.reference.mu = -np.log(self.data.ir/self.data.it)
         else:
@@ -127,7 +132,7 @@ class larchppt(object):
         else:
             autobk(group, **self.autobk_kws)
     
-    def plot_mu_tfr(self, path=None):
+    def plot_mu_tfr(self, path=None, resize_factor = 1.0):
         fig, ax = plt.subplots()
         ax.plot(self.transmission.energy, self.transmission.mu, label='$x\mu_t$')
         ax.plot(self.fluorescence.energy, self.fluorescence.mu, label='$x\mu_f$')
@@ -138,8 +143,9 @@ class larchppt(object):
         
         if path is not None:
             fig.savefig(path, bbox_inches='tight')
+            self.resize_img(path, resize_factor)
         
-    def plot_mu(self, group, plot_mu = "mu", plot_pre = False, plot_post = False, path=None):
+    def plot_mu(self, group, plot_mu = "mu", plot_pre = False, plot_post = False, path=None, resize_factor = 1.0):
         fig, ax = plt.subplots()
         
         if plot_mu == "mu":    
@@ -157,63 +163,94 @@ class larchppt(object):
         
         elif plot_mu =="flat":  
             ax.plot(group.energy,group.flat)
-            ax.set_ylabel("Flattened $x\mu(E)$")
+            ax.set_ylabel("Normalized $x\mu(E)$")
 
         ax.set_xlabel("Energy (eV)")
         
         if path is not None:
             fig.savefig(path, bbox_inches='tight')
+            
+            self.resize_img(path, resize_factor)
 
-    def gen_plot_mu_trf(self,dir):
+    def resize_img(self, path, resize_factor = 1.0):
+        
+        if resize_factor != 1.0:
+            img = Image.open(path)
+            width, height = img.size
+            
+            newsize = (int(width*resize_factor), int(height*resize_factor))
+            img = img.resize(newsize, Image.ANTIALIAS)
+            img = img.save(path)
+
+    def save_trf(self, path):
+        project = create_athena(path)
+        project.add_group(self.transmission)
+        project.add_group(self.fluorescence)
+        project.add_group(self.reference)
+        project.save()
+
+    def gen_plot_mu_trf(self,fig_dir , save_dir = None, name = "larch", resize_factor = 1.0):
         self.calc_mu()
         self.autobk(self.transmission)
         self.autobk(self.fluorescence)
         self.autobk(self.reference)
         
-        self.plot_mu_tfr(path=dir+"01_TRF Plot.png")
+        if save_dir is not None:
+            self.save_trf(save_dir+name+".prj")
         
-        self.plot_mu(self.transmission, plot_mu="mu", path=dir+self.transmission.title+".png")
-        self.plot_mu(self.fluorescence, plot_mu="mu", path=dir+self.fluorescence.title+".png")
-        self.plot_mu(self.reference, plot_mu="mu", path=dir+self.reference.title+".png")
+        self.plot_mu_tfr(path=fig_dir+"01_TRF Plot.png", resize_factor = resize_factor)
         
-        self.plot_mu(self.transmission, plot_mu="flat", path=dir+self.transmission.title+" flat.png")
-        self.plot_mu(self.fluorescence, plot_mu="flat", path=dir+self.fluorescence.title+" flat.png")
-        self.plot_mu(self.reference, plot_mu="flat", path=dir+self.reference.title+" flat.png")
+        self.plot_mu(self.transmission, plot_mu="mu", path=fig_dir+self.transmission.title+".png", resize_factor = resize_factor, plot_pre=True, plot_post=True)
+        self.plot_mu(self.fluorescence, plot_mu="mu", path=fig_dir+self.fluorescence.title+".png", resize_factor = resize_factor, plot_pre=True, plot_post=True)
+        self.plot_mu(self.reference, plot_mu="mu", path=fig_dir+self.reference.title+".png", resize_factor = resize_factor, plot_pre=True, plot_post=True)
+        
+        self.plot_mu(self.transmission, plot_mu="flat", path=fig_dir+self.transmission.title+" normalized.png", resize_factor = resize_factor)
+        self.plot_mu(self.fluorescence, plot_mu="flat", path=fig_dir+self.fluorescence.title+" normalized.png", resize_factor = resize_factor)
+        self.plot_mu(self.reference, plot_mu="flat", path=fig_dir+self.reference.title+" normalized.png", resize_factor = resize_factor)
+    
+    def QAS_preanalysis(self, files_path, file_regex = re.compile(r".*[_/](.*)\.[a-zA-Z]+"), output_dir="./output/", resize_factor = 1.0):
+        """Automatic preanalysis of data collected in QAS Beamline
+
+        Args:
+            files (string): Give the path to files for glob function
+                            Example: ./data/*.dat
+        """
+
+        files = glob.glob(files_path)
+    
+        
+        for file in files:
+            name = re.findall(file_regex, file)[0]
+            
+            self.read_data(file)
+            
+            save_dir = output_dir+name+"/"
+            fig_dir = save_dir + "fig/"
+
+            os.makedirs(fig_dir, exist_ok=True)
+
+            self.gen_plot_mu_trf(fig_dir, save_dir=None, name=name, resize_factor=resize_factor)
+        
+        # initialization
+        # presentation = pptemp.pptemp("./template.pptx")
+        presentation = pptemp.pptemp()
+            
+        # Slide 1 Title
+        slide = presentation.add_title_slide("Auto Preanalysis of QAS", str(date.today()))
+            
+        # Create slides from figures with label
+        # Set use_bar=False if you don't want the bars to appear
+        presentation.add_figure_label_slide(dir_path="./output/*/fig/", dir_regex = re.compile(r".*[/_](.*)/.*/"))
+            
+        # save
+        presentation.save(output_dir + "./preanalysis.pptx")      
         
 def main():    
     lp = larchppt()
     
-    files = glob.glob("./Co1/data/*.dat")
-    
-    print(files)
-    
-    for file in files:
-        file_regex = re.compile(r".*[_/](.*)\.[a-zA-Z]+")
-        name = re.findall(file_regex, file)[0]
-        
-        lp.read_data(file)
-        
-        save_dir = "./fig/"+name+"/"
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
-        else:  
-            pass
-        lp.gen_plot_mu_trf(save_dir)
+    lp.QAS_preanalysis(files_path="./*/data/*.dat")
     
    
-    # initialization
-    # presentation = pptemp.pptemp("./template.pptx")
-    presentation = pptemp.pptemp()
-        
-    # Slide 1 Title
-    slide = presentation.add_title_slide("Importing Figure", str(date.today()))
-           
-    # Create slides from figures with label
-    # Set use_bar=False if you don't want the bars to appear
-    presentation.add_figure_label_slide(dir_path="./fig/*/")
-        
-    # save
-    presentation.save("./output.pptx")
     
     
 
