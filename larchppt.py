@@ -208,7 +208,8 @@ class larchppt(object):
         self.plot_mu(self.fluorescence, plot_mu="flat", path=fig_dir+self.fluorescence.title+" normalized.png", resize_factor = resize_factor)
         self.plot_mu(self.reference, plot_mu="flat", path=fig_dir+self.reference.title+" normalized.png", resize_factor = resize_factor)
     
-    def QAS_preanalysis(self, files_path, file_regex = re.compile(r".*[_/](.*)\.[a-zA-Z]+"), output_dir="./output/", resize_factor = 1.0):
+    def QAS_preanalysis(self, files_path, file_regex = re.compile(r".*[_/](.*)\.[a-zA-Z]+"), 
+                        output_dir="./output/", resize_factor = 1.0):
         """Automatic preanalysis of data collected in QAS Beamline
 
         Args:
@@ -231,6 +232,9 @@ class larchppt(object):
 
             self.gen_plot_mu_trf(fig_dir, save_dir=None, name=name, resize_factor=resize_factor)
         
+        # self.generate_presenation(output_dir=output_dir, ppt_path=ppt_path)
+        
+    def generate_presenation(self, output_dir="./output/", ppt_path= "./output/preanalysis.pptx", dir_path = None):
         # initialization
         # presentation = pptemp.pptemp("./template.pptx")
         presentation = pptemp.pptemp()
@@ -240,15 +244,19 @@ class larchppt(object):
             
         # Create slides from figures with label
         # Set use_bar=False if you don't want the bars to appear
-        presentation.add_figure_label_slide(dir_path="./output/*/fig/", dir_regex = re.compile(r".*[/_](.*)/.*/"))
-            
+        if dir_path == None:
+            dir_path=output_dir + "/*/fig/"            
+        
+        presentation.add_figure_label_slide(dir_path=dir_path, dir_regex = re.compile(r".*[/_](.*)/.*/"))
+        
         # save
-        presentation.save(output_dir + "./preanalysis.pptx")      
+        os.makedirs(os.path.dirname(ppt_path), exist_ok=True)
+        presentation.save(ppt_path)  
         
 def main():    
-    lp = larchppt()
+    # lp = larchppt()
     
-    lp.QAS_preanalysis(files_path="./*/data/*.dat")
+    # lp.QAS_preanalysis(files_path="./*/data/*.dat")
     
    
     
