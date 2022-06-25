@@ -230,7 +230,7 @@ class larchppt(object):
 
             os.makedirs(fig_dir, exist_ok=True)
 
-            self.gen_plot_mu_trf(fig_dir, save_dir=None, name=name, resize_factor=resize_factor)
+            self.gen_plot_mu_trf(fig_dir, save_dir=output_dir, name=name, resize_factor=resize_factor)
         
         # self.generate_presenation(output_dir=output_dir, ppt_path=ppt_path)
         
