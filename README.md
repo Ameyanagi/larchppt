@@ -6,6 +6,7 @@ It will provide a XAS analysis, autoploting, and automatic generation of powerpo
 ## How to use
 
 ```
+# Cloning repo and installing dependencies
 git clone --recurse-submodules https://github.com/Ameyanagi/larchppt.git
 cd larchppt
 pip install -r requirement.txt
@@ -15,7 +16,22 @@ python larchppt.py
 
 ```
 
+Using as a module
+```python
+Import 
+
+```
+
+# Current features
+
+
+
 ## Features to be implemented
+
+
+```
+Anal
+```
 
 
 
