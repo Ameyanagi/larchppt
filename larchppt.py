@@ -257,7 +257,7 @@ def main():
     lp = larchppt()
     
     lp.QAS_preanalysis(files_path="./*/data/*.dat", output_dir="./output/", athena_output_dir="./output/")
-    lp.generate_presenation(output_dir="./output/", ppt_path="./output/preanalysis.ppt")
+    lp.generate_presenation(output_dir="./output/", ppt_path="./output/preanalysis.pptx")
     
    
     
