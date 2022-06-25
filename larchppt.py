@@ -143,6 +143,7 @@ class larchppt(object):
         
         if path is not None:
             fig.savefig(path, bbox_inches='tight')
+            plt.close()
             self.resize_img(path, resize_factor)
         
     def plot_mu(self, group, plot_mu = "mu", plot_pre = False, plot_post = False, path=None, resize_factor = 1.0):
@@ -169,6 +170,7 @@ class larchppt(object):
         
         if path is not None:
             fig.savefig(path, bbox_inches='tight')
+            plt.close()
             
             self.resize_img(path, resize_factor)
 
