@@ -209,7 +209,7 @@ class larchppt(object):
         self.plot_mu(self.reference, plot_mu="flat", path=fig_dir+self.reference.title+" normalized.png", resize_factor = resize_factor)
     
     def QAS_preanalysis(self, files_path, file_regex = re.compile(r".*[_/](.*)\.[a-zA-Z]+"), 
-                        output_dir="./output/", resize_factor = 1.0):
+                        output_dir="./output/", resize_factor = 1.0, athena_output_dir = "./output/"):
         """Automatic preanalysis of data collected in QAS Beamline
 
         Args:
@@ -230,7 +230,7 @@ class larchppt(object):
 
             os.makedirs(fig_dir, exist_ok=True)
 
-            self.gen_plot_mu_trf(fig_dir, save_dir=output_dir, name=name, resize_factor=resize_factor)
+            self.gen_plot_mu_trf(fig_dir, save_dir=athena_output_dir, name=name, resize_factor=resize_factor)
         
         # self.generate_presenation(output_dir=output_dir, ppt_path=ppt_path)
         
@@ -254,9 +254,10 @@ class larchppt(object):
         presentation.save(ppt_path)  
         
 def main():    
-    # lp = larchppt()
+    lp = larchppt()
     
-    # lp.QAS_preanalysis(files_path="./*/data/*.dat")
+    lp.QAS_preanalysis(files_path="./*/data/*.dat", output_dir="./output/", athena_output_dir="./output/")
+    lp.generate_presenation(output_dir="./output/", ppt_path="./output/preanalysis.ppt")
     
    
     

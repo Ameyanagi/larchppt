@@ -18,7 +18,13 @@ python larchppt.py
 
 Using as a module
 ```python
-Import 
+import larchppt
+
+# Initialization
+lp = larchppt.larchppt()
+
+# Preanalysis of QAS Beamline
+lp.QAS_preanalysis(files_path="./*/data/*.dat")
 
 ```
 
