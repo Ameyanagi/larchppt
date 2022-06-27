@@ -35,17 +35,31 @@ lp.QAS_preanalysis(files_path="./*/data/*.dat", output_dir="./output/", athena_o
 lp.generate_presenation(output_dir="./output/", ppt_path="./output/preanalysis.ppt")
 ```
 
+## Using in bluesky
+Bluesky is a data collection framework used in NSLS-II.
+It has a Jupyter Lab frontend that enables us to run our code natively.
+
+[Login to Bluesky](https://jupyter.nsls2.bnl.gov/hub/spawn)
+
+Open terminal and clone the git repo.
+```
+# Cloning repo and installing dependencies
+git clone --recurse-submodules https://github.com/Ameyanagi/larchppt.git
+```
+Then open larchppt/notebook/QAS_example.ipynb for example
+
 # Current features
-- Preanalysis of QAS data
+- Preanalysis of QAS data. (It can be run on bluesky system)
+- Merging the data
+- k, R region analysis
 
 
 ## Features to be implemented
 Ameyanagi working?
-- Merging the data
-- k, R region analysis
+- Save and loading settings
 
 pkrouth working?
-- fitting
+- Fitting
 
 
 

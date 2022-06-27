@@ -57,7 +57,7 @@ class larchppt(object):
         self.pre_edge_kws = dict(
             # Values are set to the default values used in Demeter
             pre1=-150,  # the lower bond of the function to fit the pre-edge
-            pre2=-30,  # the upper bond of the function to fit the pre-edge
+            pre2=-50,  # the upper bond of the function to fit the pre-edge
             norm1=50,  # the lower bond of the function to fit the post-edge
             norm2=2000,  # the upper bond of the function to fit the post-edge
             nnorm=2,  # degree for the polynomials
@@ -161,25 +161,38 @@ class larchppt(object):
         else:
             print("to be implemented")
 
-    def pre_edge(self, group, pre_edge_kws=None):
-        if pre_edge_kws is not None:
-            keywords = self.pre_edge_kws
-
-            keywords.update(pre_edge_kws)
-            pre_edge(group, **keywords)
-
-        else:
-            pre_edge(group, **self.pre_edge_kws)
-
-    def autobk(self, group, autobk_kws=None, pre_edge_kws=None):
+    def pre_edge(self, group, pre_edge_kws=None, fix_e0 = None):
+        
         # pre_edge(group, **self.pre_edge_kws)
+        pre_edge_keywords = self.pre_edge_kws
+         
+        if fix_e0 is not None:
+            pre_edge_keywords["e0"] = fix_e0
+        elif hasattr(group, "e0"):
+            pre_edge_keywords["e0"] = group.e0
+        
+        if pre_edge_kws is not None:
+            pre_edge_keywords.update(pre_edge_kws)
+        pre_edge(group, **pre_edge_keywords)
 
+    def autobk(self, group, autobk_kws=None, pre_edge_kws=None, fix_e0 = None):
+        # pre_edge(group, **self.pre_edge_kws)
+        pre_edge_keywords = self.pre_edge_kws
+         
+        if fix_e0 is not None:
+            pre_edge_keywords["e0"] = fix_e0
+        elif hasattr(group, "e0"):
+            pre_edge_keywords["e0"] = group.e0
+        
+        if pre_edge_kws is not None:
+            pre_edge_keywords.update(pre_edge_kws)
+        pre_edge(group, **pre_edge_keywords)
+        
+        autobk_keywords = self.autobk_kws
         if autobk_kws is not None:
-            keywords = self.autobk_kws
-            keywords.update(autobk_kws)
-            autobk(group, **keywords)
-        else:
-            autobk(group, **self.autobk_kws)
+            autobk_keywords.update(autobk_kws)
+        
+        autobk(group, **autobk_keywords, pre_edge_kws=pre_edge_keywords)
 
     def xftf(self, group, xftf_kws=None):
         if xftf_kws is not None:
@@ -317,7 +330,7 @@ class larchppt(object):
         fig, ax = plt.subplots()
 
         ax.plot(group.r, group.chir_mag)
-        ax.set_ylabel("$k^2 \cdot \chi \: (k^{" + str(k_weight) + "}$)")
+        ax.set_ylabel("$|\chi(k)| \: (\mathrm{\AA}^{" + str(-(k_weight+1)) + "}$)")
         ax.set_xlabel("Radial distance ($\mathrm{\AA}$)")
 
         if path is not None:
@@ -332,7 +345,7 @@ class larchppt(object):
         for group in group_list:
             ax.plot(group.r, group.chir_mag)
 
-        ax.set_ylabel("$k^2 \cdot \chi \: (k^{" + str(k_weight) + "}$)")
+        ax.set_ylabel("$|\chi(k)| \: (\mathrm{\AA}^{" + str(-(k_weight+1)) + "}$)")
         ax.set_xlabel("Radial distance ($\mathrm{\AA}$)")
 
         if path is not None:
@@ -360,22 +373,37 @@ class larchppt(object):
         project.add_group(self.reference)
         project.save()
 
-    def gen_plot_mu_trf(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=True, recaliberation=False, denergy=0, xlim=[-30, 50]):
+    def gen_plot_mu_trf(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=True, recaliberation=False, denergy=0, xlim=[-30, 50], fix_e0 = None):
         self.calc_mu()
-        self.autobk(self.transmission)
-        self.autobk(self.fluorescence)
-        self.autobk(self.reference)
-
-        self.xftf(self.transmission)
-        self.xftf(self.fluorescence)
-        self.xftf(self.reference)
-
-        center = xray_edge(*guess_edge(self.reference.e0)).energy
         
+        self.transmission.e0 = None
+        self.fluorescence.e0 = None
+        self.reference.e0 = None
+        
+        if fix_e0 is not None:
+            add_group = True
+            
+            if len(self.transmission_list) > 0:
+                self.transmission.e0 = self.transmission_list[0].e0
+            if len(self.fluorescence_list) > 0:
+                self.fluorescence.e0 = self.fluorescence_list[0].e0
+            if len(self.transmission_list) > 0:
+                self.reference.e0 = self.reference_list[0].e0
+            
+        self.autobk(self.transmission, fix_e0=self.transmission.e0)
+        self.autobk(self.fluorescence, fix_e0=self.fluorescence.e0)
+        self.autobk(self.reference, fix_e0=self.reference.e0)
+       
         if recaliberation:
             # It is not working well
             self.recaliberation(denergy)
 
+        self.xftf(self.transmission)
+        self.xftf(self.fluorescence)
+        self.xftf(self.reference)
+        
+        center = xray_edge(*guess_edge(self.reference.e0)).energy
+        
         if add_group:
             self.add_group_list()
 
@@ -727,7 +755,7 @@ class larchppt(object):
     # Automation
 
     def QAS_preanalysis(self, files_path, file_regex=re.compile(r".*[_/](.*)\.[a-zA-Z]+"),
-                        output_dir="./output/", resize_factor=1.0, athena_output_dir="./output/", recaliberation=False):
+                        output_dir="./output/", resize_factor=1.0, athena_output_dir="./output/", recaliberation=False, fix_e0=False, prefix = None):
         """Automatic preanalysis of data collected in QAS Beamline
 
         Args:
@@ -750,11 +778,14 @@ class larchppt(object):
             os.makedirs(fig_dir, exist_ok=True)
 
             self.gen_plot_mu_trf(
-                fig_dir, save_dir=athena_output_dir, name=name, resize_factor=resize_factor)
+                fig_dir, save_dir=athena_output_dir, name=name, resize_factor=resize_factor, fix_e0=fix_e0)
 
         # Ouput of merge
 
-        name = "all"
+        if prefix: 
+            name = "{} All Spectrum".format(prefix)
+        else:
+            name = "All Spectrum"
         save_dir = output_dir+name+"/"
         fig_dir = save_dir + "fig/"
 
@@ -766,7 +797,10 @@ class larchppt(object):
         # Ouput of merge
         self.merge_groups()
 
-        name = "merge"
+        if prefix: 
+            name = "{} Merged Spectrum".format(prefix)
+        else:
+            name = "Merged Spectrum"
         save_dir = output_dir+name+"/"
         fig_dir = save_dir + "fig/"
 
@@ -777,14 +811,15 @@ class larchppt(object):
 
         # self.generate_presenation(output_dir=output_dir, ppt_path=ppt_path)
 
-    def generate_presenation(self, output_dir="./output/", ppt_path="./output/preanalysis.pptx", dir_path=None):
+    def generate_presenation(self, output_dir="./output/", ppt_path="./output/preanalysis.pptx", dir_path=None, title_font_size = 30,
+                             title = "Auto Preanalysis of QAS"):
         # initialization
         # presentation = pptemp.pptemp("./template.pptx")
         presentation = pptemp.pptemp()
 
         # Slide 1 Title
         slide = presentation.add_title_slide(
-            "Auto Preanalysis of QAS", str(date.today()))
+            title, str(date.today()))
 
         # Create slides from figures with label
         # Set use_bar=False if you don't want the bars to appear
@@ -792,7 +827,7 @@ class larchppt(object):
             dir_path = output_dir + "/*/fig/"
 
         presentation.add_figure_label_slide(
-            dir_path=dir_path, dir_regex=re.compile(r".*[/_](.*)/.*/"))
+            dir_path=dir_path, dir_regex=re.compile(r".*[/_](.*)/.*/"), title_font_size=title_font_size)
 
         # save
         os.makedirs(os.path.dirname(ppt_path), exist_ok=True)
@@ -802,10 +837,10 @@ class larchppt(object):
 def main():
     lp = larchppt()
 
-    lp.QAS_preanalysis(files_path="./Co1/data/*.dat", output_dir="./output/Co/",
-                       athena_output_dir="./output/Co/")
-    lp.generate_presenation(output_dir="./output/Co/",
-                            ppt_path="./output/Co_preanalysis.pptx")
+    lp.QAS_preanalysis(files_path="./Co1/data/*.dat", output_dir="./output/Co1/",
+                       athena_output_dir="./output/Co1/", fix_e0=True, prefix="00000_Co1")
+    lp.generate_presenation(output_dir="./output/Co1/",
+                            ppt_path="./output/Co1_preanalysis.pptx", title_font_size = 20, title = "Preanalysis of Co foil")
 
 
 if __name__ == '__main__':
