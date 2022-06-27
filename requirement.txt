@@ -4,3 +4,4 @@ numpy
 lxml
 Pillow
 xraylarch
+tqdm

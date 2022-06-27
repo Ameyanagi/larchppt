@@ -19,6 +19,7 @@ import numpy as np
 import seaborn as sns
 sns.set_style("whitegrid")
 sns.set_context("notebook")
+import tqdm
 
 
 class larchppt(object):
@@ -735,8 +736,10 @@ class larchppt(object):
         """
 
         files = glob.glob(files_path)
+        files.sort()
+        self.init_group_list()
 
-        for file in files:
+        for file in tqdm.tqdm(files):
             name = re.findall(file_regex, file)[0]
 
             self.read_data(file)
