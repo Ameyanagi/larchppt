@@ -408,6 +408,7 @@ class larchppt(object):
             self.add_group_list()
 
         if save_dir is not None:
+            os.makedirs(os.path.dirname(save_dir+name+".prj"), exist_ok=True)
             self.save_trf(save_dir+name+".prj")
 
         filename = "{fig_dir}/{num:05}_{title}{discription}.png"
@@ -812,7 +813,7 @@ class larchppt(object):
         # self.generate_presenation(output_dir=output_dir, ppt_path=ppt_path)
 
     def generate_presenation(self, output_dir="./output/", ppt_path="./output/preanalysis.pptx", dir_path=None, title_font_size = 30,
-                             title = "Auto Preanalysis of QAS"):
+                             title = "Auto Preanalysis of QAS", label_font_size = 18):
         # initialization
         # presentation = pptemp.pptemp("./template.pptx")
         presentation = pptemp.pptemp()
@@ -827,7 +828,7 @@ class larchppt(object):
             dir_path = output_dir + "/*/fig/"
 
         presentation.add_figure_label_slide(
-            dir_path=dir_path, dir_regex=re.compile(r".*[/_](.*)/.*/"), title_font_size=title_font_size)
+            dir_path=dir_path, dir_regex=re.compile(r".*[/_](.*)/.*/"), title_font_size=title_font_size, label_font_size=label_font_size)
 
         # save
         os.makedirs(os.path.dirname(ppt_path), exist_ok=True)
