@@ -672,6 +672,7 @@ class larchppt(object):
 
         # Reference Plot
         group = self.reference
+        filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
         self.plot_mu(group, plot_mu="flat", path=filename.format(
