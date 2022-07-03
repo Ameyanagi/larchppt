@@ -1,26 +1,27 @@
-from tokenize import group
-from turtle import title
+# module related to larch
+import larch
+from larch import Group
+from larch.io import read_athena, read_ascii, create_athena, merge_groups
 from larch.xafs import autobk, xftf, mback, pre_edge, pre_edge_baseline, rebin_xafs
+from xraydb import guess_edge, xray_edge
+
+# module for ppt generation
+from pptemp import pptemp
+
+# modle for utility functions
 from PIL import Image
 import os
 import re
 import glob
 from datetime import date
-from pptemp import pptemp
-from xraydb import guess_edge, xray_edge
-from larch.io import read_athena, read_ascii, create_athena, merge_groups
-from larch import Group
-import larch
-from enum import auto
-from heapq import merge
-from weakref import ref
-import matplotlib.pyplot as plt
+import tqdm
+
+# numpy, matplotlib
 import numpy as np
+import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_style("whitegrid")
 sns.set_context("notebook")
-import tqdm
-
 
 class larchppt(object):
     def __init__(self, *args):
