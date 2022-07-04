@@ -5,3 +5,5 @@ lxml
 Pillow
 xraylarch
 tqdm
+watchdog
+opencv-python

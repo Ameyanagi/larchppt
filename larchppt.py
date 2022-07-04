@@ -207,7 +207,7 @@ class larchppt(object):
 
     # Plotting
 
-    def plot_mu_tfr(self, path=None, resize_factor=1.0):
+    def plot_mu_tfr(self, path=None, resize_factor=1.0, error_bar = False):
         fig, ax = plt.subplots()
         ax.plot(self.transmission.energy,
                 self.transmission.mu, label='$x\mu_t$')
@@ -223,7 +223,7 @@ class larchppt(object):
             plt.close()
             self.resize_img(path, resize_factor)
 
-    def plot_mu(self, group, plot_mu="mu", plot_pre=False, plot_post=False, path=None, resize_factor=1.0, xlim=False, e0 = None):
+    def plot_mu(self, group, plot_mu="mu", plot_pre=False, plot_post=False, path=None, resize_factor=1.0, xlim=False, e0 = None, error_bar = False):
         fig, ax = plt.subplots()
 
         if plot_mu == "mu":
@@ -258,7 +258,7 @@ class larchppt(object):
 
             self.resize_img(path, resize_factor)
 
-    def plot_mu_list(self, group_list, plot_mu="flat", path=None, resize_factor=1.0, xlim=False):
+    def plot_mu_list(self, group_list, plot_mu="flat", path=None, resize_factor=1.0, xlim=False, error_bar = False):
         fig, ax = plt.subplots()
 
         if plot_mu == "mu":
@@ -278,7 +278,7 @@ class larchppt(object):
 
             for group in group_list:
                 ax.plot(group.energy, group.flat)
-
+                
         ax.set_xlabel("Energy (eV)")
 
         if xlim:
@@ -374,7 +374,7 @@ class larchppt(object):
         project.add_group(self.reference)
         project.save()
 
-    def gen_plot_mu_trf(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=True, recaliberation=False, denergy=0, xlim=[-30, 50], fix_e0 = None):
+    def gen_plot_mu_trf(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=True, recaliberation=False, denergy=0, xlim=[-30, 50], fix_e0 = None, error_bar = False):
         self.calc_mu()
         
         self.transmission.e0 = None
@@ -436,12 +436,12 @@ class larchppt(object):
         filename_format["num"] += 1
         filename_format["discription"] = discription[0]
         self.plot_mu(group, plot_mu="mu", path=filename.format(
-            **filename_format), resize_factor=resize_factor, plot_pre=True, plot_post=True)
+            **filename_format), resize_factor=resize_factor, plot_pre=True, plot_post=True, error_bar = error_bar)
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
         self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+            **filename_format), resize_factor=resize_factor, error_bar = error_bar)
 
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
@@ -601,7 +601,7 @@ class larchppt(object):
             **filename_format), resize_factor=resize_factor)    
 
 
-    def gen_plot_summary(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=False, recaliberation=False, denergy=0):
+    def gen_plot_summary(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=False, recaliberation=False, denergy=0, error_bar = False):
         self.calc_mu()
         self.autobk(self.transmission)
         self.autobk(self.fluorescence)
@@ -633,7 +633,7 @@ class larchppt(object):
         filename_format["num"] += 1
         filename_format["discription"] = discription[0]
         self.plot_mu_tfr(path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
 
         # Transmission Plot
         group = self.transmission
@@ -641,7 +641,7 @@ class larchppt(object):
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
         self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
@@ -659,7 +659,7 @@ class larchppt(object):
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
         self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
@@ -677,7 +677,7 @@ class larchppt(object):
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
         self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
@@ -697,7 +697,7 @@ class larchppt(object):
                                          yarray='mu', kind='cubic', trim=True, calc_yerr=True)
         self.reference = merge_groups(self.reference_list, master=self.reference_list[0], xarray='energy',
                                       yarray='mu', kind='cubic', trim=True, calc_yerr=True)
-
+        
         # Copy headers
         self.copy_header(self.transmission, self.transmission_list[0])
         self.copy_header(self.fluorescence, self.fluorescence_list[0])
