@@ -16,7 +16,6 @@ from PIL import Image
 import numpy as np
 import glob
 
-from pyparsing import col
 import matplotlib.pyplot as plt
 
 class autoQAS(object):
@@ -55,7 +54,7 @@ class autoQAS(object):
     def update_watch_regex(self, regex = [r'.*\.dat$']):
         self.watch_regex = regex
         
-    def update_name_regex(self, regex = re.compile(r'([^/]*)  [0-9]{4}(?:-r[0-9]{4}\.dat)?')):
+    def update_name_regex(self, regex = re.compile(r'([^/]*) +[0-9]{4}(?:-r[0-9]{4}\.dat)?')):
         self.name_regex = regex
     
     # Obtain current dat files in order of modification time

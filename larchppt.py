@@ -526,7 +526,7 @@ class larchppt(object):
             discription=" normalized"
         )
 
-        discription = ["", " all reagion", " k(all)", " R(all)"]
+        discription = ["", " all region", " k(all)", " R(all)"]
 
         # Transmission Plot
         group_list = self.transmission_list
