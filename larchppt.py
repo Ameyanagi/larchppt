@@ -1,27 +1,29 @@
 # module related to larch
-import larch
-from larch import Group
-from larch.io import read_athena, read_ascii, create_athena, merge_groups
-from larch.xafs import autobk, xftf, mback, pre_edge, pre_edge_baseline, rebin_xafs
-from xraydb import guess_edge, xray_edge
-
-# module for ppt generation
-from pptemp import pptemp
-
-# modle for utility functions
-from PIL import Image
+import glob
 import os
 import re
-import glob
 from datetime import date
-import tqdm
+
+import matplotlib.pyplot as plt
 
 # numpy, matplotlib
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import tqdm
+from larch import Group
+from larch.io import create_athena, merge_groups, read_ascii, read_athena
+from larch.xafs import autobk, pre_edge, rebin_xafs, xftf
+
+# modle for utility functions
+from PIL import Image
+from xraydb import guess_edge, xray_edge
+
+# module for ppt generation
+import pptemp
+
 sns.set_style("whitegrid")
 sns.set_context("notebook")
+
 
 class larchppt(object):
     def __init__(self, *args):
@@ -35,7 +37,6 @@ class larchppt(object):
         self.init_pre_edge_kws()
         self.init_autobk_kws()
         self.init_xftf_kws()
-
         self.init_group_list()
 
     def set_data_type(self, data_type="QAS"):
@@ -102,7 +103,7 @@ class larchppt(object):
             # Flag to calculate uncertainties in mu_0(E) and chi(k) [True]
             calc_uncertainties=True,
             # sigma level for uncertainties in mu_0(E) and chi(k) [1]
-            err_sigma=1
+            err_sigma=1,
         )
 
     def set_autobk_kws(self, autobk_kws=None):
@@ -117,11 +118,11 @@ class larchppt(object):
             kmax=15,  # ending k for FT Window
             dk=1,  # tapering parameter for FT Window
             dk2=None,  # second tapering parameter for FT Window
-            window="kaiser",  # name of window type
+            window="hanning",  # name of window type
             nfft=2048,  # value to use for N_fft (2048).
             kstep=0.05,  # value to use for delta_k (0.05 Ang^-1).
             # output the phase as well as magnitude, real, imag  [False]
-            with_phase=False
+            with_phase=False,
         )
 
     def set_xftf_kws(self, xftf_kws=None):
@@ -146,53 +147,52 @@ class larchppt(object):
             self.transmission.title = "Transmission"
             self.transmission.filename = "Transmission"
             self.transmission.energy = self.data.energy
-            self.transmission.mu = -np.log(self.data.it/self.data.i0)
+            self.transmission.mu = -np.log(self.data.it / self.data.i0)
 
             # Create fluorescence group
             self.fluorescence.title = "Fluorescence"
             self.fluorescence.filename = "Fluorescence"
             self.fluorescence.energy = self.data.energy
-            self.fluorescence.mu = self.data.iff/self.data.i0
+            self.fluorescence.mu = self.data.iff / self.data.i0
 
             # Create reference group
             self.reference.title = "Reference"
             self.reference.filename = "Reference"
             self.reference.energy = self.data.energy
-            self.reference.mu = -np.log(self.data.ir/self.data.it)
+            self.reference.mu = -np.log(self.data.ir / self.data.it)
         else:
             print("to be implemented")
 
-    def pre_edge(self, group, pre_edge_kws=None, fix_e0 = None):
-        
+    def pre_edge(self, group, pre_edge_kws=None, fix_e0=None):
+
         # pre_edge(group, **self.pre_edge_kws)
         pre_edge_keywords = self.pre_edge_kws
-         
+
         if fix_e0 is not None:
             pre_edge_keywords["e0"] = fix_e0
         elif hasattr(group, "e0"):
             pre_edge_keywords["e0"] = group.e0
-        
+
         if pre_edge_kws is not None:
             pre_edge_keywords.update(pre_edge_kws)
         pre_edge(group, **pre_edge_keywords)
 
-    def autobk(self, group, autobk_kws=None, pre_edge_kws=None, fix_e0 = None):
+    def autobk(self, group, autobk_kws=None, pre_edge_kws=None, fix_e0=None):
         # pre_edge(group, **self.pre_edge_kws)
         pre_edge_keywords = self.pre_edge_kws
-         
+
         if fix_e0 is not None:
             pre_edge_keywords["e0"] = fix_e0
         elif hasattr(group, "e0"):
             pre_edge_keywords["e0"] = group.e0
-        
+
         if pre_edge_kws is not None:
             pre_edge_keywords.update(pre_edge_kws)
-        pre_edge(group, **pre_edge_keywords)
-        
+
         autobk_keywords = self.autobk_kws
         if autobk_kws is not None:
             autobk_keywords.update(autobk_kws)
-        
+
         autobk(group, **autobk_keywords, pre_edge_kws=pre_edge_keywords)
 
     def xftf(self, group, xftf_kws=None):
@@ -207,23 +207,32 @@ class larchppt(object):
 
     # Plotting
 
-    def plot_mu_tfr(self, path=None, resize_factor=1.0, error_bar = False):
+    def plot_mu_tfr(self, path=None, resize_factor=1.0, error_bar=False):
         fig, ax = plt.subplots()
-        ax.plot(self.transmission.energy,
-                self.transmission.mu, label='$x\mu_t$')
-        ax.plot(self.fluorescence.energy,
-                self.fluorescence.mu, label='$x\mu_f$')
-        ax.plot(self.reference.energy, self.reference.mu, label='$x\mu_{ref}$')
+        ax.plot(self.transmission.energy, self.transmission.mu, label="$x\mu_t$")
+        ax.plot(self.fluorescence.energy, self.fluorescence.mu, label="$x\mu_f$")
+        ax.plot(self.reference.energy, self.reference.mu, label="$x\mu_{ref}$")
         ax.set_xlabel("Energy (eV)")
         ax.set_ylabel("$x\mu(E)$")
-        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
             self.resize_img(path, resize_factor)
 
-    def plot_mu(self, group, plot_mu="mu", plot_pre=False, plot_post=False, path=None, resize_factor=1.0, xlim=False, e0 = None, error_bar = False):
+    def plot_mu(
+        self,
+        group,
+        plot_mu="mu",
+        plot_pre=False,
+        plot_post=False,
+        path=None,
+        resize_factor=1.0,
+        xlim=False,
+        e0=None,
+        error_bar=False,
+    ):
         fig, ax = plt.subplots()
 
         if plot_mu == "mu":
@@ -253,12 +262,20 @@ class larchppt(object):
             ax.set_xlim(np.array(xlim) + center)
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
 
             self.resize_img(path, resize_factor)
 
-    def plot_mu_list(self, group_list, plot_mu="flat", path=None, resize_factor=1.0, xlim=False, error_bar = False):
+    def plot_mu_list(
+        self,
+        group_list,
+        plot_mu="flat",
+        path=None,
+        resize_factor=1.0,
+        xlim=False,
+        error_bar=False,
+    ):
         fig, ax = plt.subplots()
 
         if plot_mu == "mu":
@@ -278,14 +295,14 @@ class larchppt(object):
 
             for group in group_list:
                 ax.plot(group.energy, group.flat)
-                
+
         ax.set_xlabel("Energy (eV)")
 
         if xlim:
             ax.set_xlim(xlim + group_list[0].e0)
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
 
             self.resize_img(path, resize_factor)
@@ -293,17 +310,22 @@ class larchppt(object):
     def plot_k(self, group, k_weight=2, path=None, resize_factor=1.0):
         fig, ax = plt.subplots()
 
-        ax.plot(group.k, group.chi*group.k**2)
+        ax.plot(group.k, group.chi * group.k**2)
         if k_weight == 1:
             ax.set_ylabel("$k\chi(k) \: (\mathrm{\AA}^{-1})$")
         elif k_weight > 1:
             ax.set_ylabel(
-                "$k^{"+str(k_weight)+"}\chi(k) \: (\mathrm{\AA}^{-"+str(k_weight)+"})$")
+                "$k^{"
+                + str(k_weight)
+                + "}\chi(k) \: (\mathrm{\AA}^{-"
+                + str(k_weight)
+                + "})$"
+            )
 
         ax.set_xlabel("Wavenumber ($\mathrm{\AA}^{-1}$)")
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
 
             self.resize_img(path, resize_factor)
@@ -312,17 +334,22 @@ class larchppt(object):
         fig, ax = plt.subplots()
 
         for group in group_list:
-            ax.plot(group.k, group.chi*group.k**2)
+            ax.plot(group.k, group.chi * group.k**2)
         if k_weight == 1:
             ax.set_ylabel("$k\chi(k) \: (\mathrm{\AA}^{-1})$")
         elif k_weight > 1:
             ax.set_ylabel(
-                "$k^{"+str(k_weight)+"}\chi(k) \: (\mathrm{\AA}^{-"+str(k_weight)+"})$")
+                "$k^{"
+                + str(k_weight)
+                + "}\chi(k) \: (\mathrm{\AA}^{-"
+                + str(k_weight)
+                + "})$"
+            )
 
         ax.set_xlabel("Wavenumber ($\mathrm{\AA}^{-1}$)")
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
 
             self.resize_img(path, resize_factor)
@@ -331,11 +358,11 @@ class larchppt(object):
         fig, ax = plt.subplots()
 
         ax.plot(group.r, group.chir_mag)
-        ax.set_ylabel("$|\chi(k)| \: (\mathrm{\AA}^{" + str(-(k_weight+1)) + "}$)")
+        ax.set_ylabel("$|\chi(k)| \: (\mathrm{\AA}^{" + str(-(k_weight + 1)) + "}$)")
         ax.set_xlabel("Radial distance ($\mathrm{\AA}$)")
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
 
             self.resize_img(path, resize_factor)
@@ -346,11 +373,11 @@ class larchppt(object):
         for group in group_list:
             ax.plot(group.r, group.chir_mag)
 
-        ax.set_ylabel("$|\chi(k)| \: (\mathrm{\AA}^{" + str(-(k_weight+1)) + "}$)")
+        ax.set_ylabel("$|\chi(k)| \: (\mathrm{\AA}^{" + str(-(k_weight + 1)) + "}$)")
         ax.set_xlabel("Radial distance ($\mathrm{\AA}$)")
 
         if path is not None:
-            fig.savefig(path, bbox_inches='tight')
+            fig.savefig(path, bbox_inches="tight")
             plt.close()
 
             self.resize_img(path, resize_factor)
@@ -363,7 +390,7 @@ class larchppt(object):
             img = Image.open(path)
             width, height = img.size
 
-            newsize = (int(width*resize_factor), int(height*resize_factor))
+            newsize = (int(width * resize_factor), int(height * resize_factor))
             img = img.resize(newsize, Image.ANTIALIAS)
             img = img.save(path)
 
@@ -374,27 +401,165 @@ class larchppt(object):
         project.add_group(self.reference)
         project.save()
 
-    def gen_plot_mu_trf(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=True, recaliberation=False, denergy=0, xlim=[-30, 50], fix_e0 = None, error_bar = False):
+    def save_group(self, path, mode="transmission"):
+        if mode == "transmission":
+            group = self.transmission
+        elif mode == "fluorescence":
+            group = self.fluorescence
+        elif mode == "reference":
+            group = self.reference
+        else:
+            raise ValueError(
+                "mode must be one of 'transmission', 'fluorescence', 'reference'"
+            )
+
+        project = create_athena(path)
+        project.add_group(group)
+        project.save()
+
+    def gen_plot_mu(
+        self,
+        fig_dir,
+        save_dir=None,
+        name="larch",
+        resize_factor=1.0,
+        add_group=True,
+        recaliberation=False,
+        denergy=0,
+        xlim=[-30, 50],
+        fix_e0=None,
+        error_bar=False,
+        mode="transmission",
+        center_mode="guess",
+    ):
         self.calc_mu()
-        
+
+        if mode == "transmission":
+            group = self.transmission
+            group_list = self.transmission_list
+        elif mode == "fluorescence":
+            group = self.fluorescence
+            group_list = self.fluorescence_list
+        elif mode == "reference":
+            group = self.reference
+            group_list = self.reference_list
+        else:
+            raise ValueError(
+                "mode must be one of 'transmission', 'fluorescence', 'reference'"
+            )
+
+        group.e0 = None
+
+        if fix_e0 is not None:
+            add_group = True
+
+            if len(group_list) > 0:
+                group.e0 = group_list[0].e0
+
+        self.autobk(group, fix_e0=group.e0)
+
+        if recaliberation:
+            # It is not working well.
+            group(recaliberation=denergy)
+
+        self.xftf(group)
+
+        if center_mode == "guess":
+            center = xray_edge(*guess_edge(group.e0)).energy
+
+        if add_group:
+            group_list.append(group)
+
+        if save_dir is not None:
+            os.makedirs(os.path.dirname(save_dir + name + ".prj"), exist_ok=True)
+            self.save_group(save_dir + name + ".prj", mode=mode)
+
+        filename = "{fig_dir}/{num:05}_{title} {mode}{discription}.png"
+        filename_format = dict(
+            fig_dir=fig_dir, num=0, title="", discription=" normalized", mode=mode
+        )
+
+        discription = ["", " normalized", " k", " R"]
+
+        filename_format["title"] = group.title
+        filename_format["num"] += 1
+        filename_format["discription"] = discription[0]
+        self.plot_mu(
+            group,
+            plot_mu="mu",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            plot_pre=True,
+            plot_post=True,
+            error_bar=error_bar,
+        )
+
+        filename_format["num"] += 1
+        filename_format["discription"] = discription[1]
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            error_bar=error_bar,
+        )
+
+        filename_format["num"] += 1
+        filename_format["discription"] = " ({} to {}eV)".format(*xlim)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+            e0=center,
+        )
+
+        filename_format["num"] += 1
+        filename_format["discription"] = discription[2]
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
+
+        filename_format["num"] += 1
+        filename_format["discription"] = discription[3]
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
+
+    def gen_plot_mu_trf(
+        self,
+        fig_dir,
+        save_dir=None,
+        name="larch",
+        resize_factor=1.0,
+        add_group=True,
+        recaliberation=False,
+        denergy=0,
+        xlim=[-30, 50],
+        fix_e0=None,
+        error_bar=False,
+    ):
+        self.calc_mu()
+
         self.transmission.e0 = None
         self.fluorescence.e0 = None
         self.reference.e0 = None
-        
+
         if fix_e0 is not None:
             add_group = True
-            
+
             if len(self.transmission_list) > 0:
                 self.transmission.e0 = self.transmission_list[0].e0
             if len(self.fluorescence_list) > 0:
                 self.fluorescence.e0 = self.fluorescence_list[0].e0
             if len(self.transmission_list) > 0:
                 self.reference.e0 = self.reference_list[0].e0
-            
+
         self.autobk(self.transmission, fix_e0=self.transmission.e0)
         self.autobk(self.fluorescence, fix_e0=self.fluorescence.e0)
         self.autobk(self.reference, fix_e0=self.reference.e0)
-       
+
         if recaliberation:
             # It is not working well
             self.recaliberation(denergy)
@@ -402,22 +567,19 @@ class larchppt(object):
         self.xftf(self.transmission)
         self.xftf(self.fluorescence)
         self.xftf(self.reference)
-        
+
         center = xray_edge(*guess_edge(self.reference.e0)).energy
-        
+
         if add_group:
             self.add_group_list()
 
         if save_dir is not None:
-            os.makedirs(os.path.dirname(save_dir+name+".prj"), exist_ok=True)
-            self.save_trf(save_dir+name+".prj")
+            os.makedirs(os.path.dirname(save_dir + name + ".prj"), exist_ok=True)
+            self.save_trf(save_dir + name + ".prj")
 
         filename = "{fig_dir}/{num:05}_{title}{discription}.png"
         filename_format = dict(
-            fig_dir=fig_dir,
-            num=0,
-            title="",
-            discription=" normalized"
+            fig_dir=fig_dir, num=0, title="", discription=" normalized"
         )
 
         discription = ["", " normalized", " k", " R"]
@@ -435,28 +597,48 @@ class larchppt(object):
         filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[0]
-        self.plot_mu(group, plot_mu="mu", path=filename.format(
-            **filename_format), resize_factor=resize_factor, plot_pre=True, plot_post=True, error_bar = error_bar)
+        self.plot_mu(
+            group,
+            plot_mu="mu",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            plot_pre=True,
+            plot_post=True,
+            error_bar=error_bar,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, error_bar = error_bar)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            error_bar=error_bar,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=xlim, e0 = center)        
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+            e0=center,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         # Fluorescence Plot
         group = self.fluorescence
@@ -464,28 +646,46 @@ class larchppt(object):
         filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[0]
-        self.plot_mu(group, plot_mu="mu", path=filename.format(
-            **filename_format), resize_factor=resize_factor, plot_pre=True, plot_post=True)
+        self.plot_mu(
+            group,
+            plot_mu="mu",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            plot_pre=True,
+            plot_post=True,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=xlim, e0 = center)    
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+            e0=center,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         # Reference Plot
         group = self.reference
@@ -493,37 +693,62 @@ class larchppt(object):
         filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[0]
-        self.plot_mu(group, plot_mu="mu", path=filename.format(
-            **filename_format), resize_factor=resize_factor, plot_pre=True, plot_post=True)
+        self.plot_mu(
+            group,
+            plot_mu="mu",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            plot_pre=True,
+            plot_post=True,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=xlim, e0 = center)    
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+            e0=center,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
-    def gen_plot_mu_trf_list(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=False, recaliberation=False, denergy=0, xlim=[-30, 50]):
-        
+    def gen_plot_mu_trf_list(
+        self,
+        fig_dir,
+        save_dir=None,
+        name="larch",
+        resize_factor=1.0,
+        add_group=False,
+        recaliberation=False,
+        denergy=0,
+        xlim=[-30, 50],
+    ):
+
         filename = "{fig_dir}/{num:05}_{title}{discription}.png"
         filename_format = dict(
-            fig_dir=fig_dir,
-            num=0,
-            title="",
-            discription=" normalized"
+            fig_dir=fig_dir, num=0, title="", discription=" normalized"
         )
 
         discription = ["", " all region", " k(all)", " R(all)"]
@@ -534,23 +759,39 @@ class larchppt(object):
         filename_format["title"] = group_list[0].title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu_list(group_list, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=None)
-        
+        self.plot_mu_list(
+            group_list,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=None,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
-        self.plot_mu_list(group_list, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=xlim)        
-        
+        self.plot_mu_list(
+            group_list,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k_list(group_list, path=filename.format(
-            **filename_format), resize_factor=resize_factor)                
-        
+        self.plot_k_list(
+            group_list,
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R_list(group_list, path=filename.format(
-            **filename_format), resize_factor=resize_factor)     
+        self.plot_R_list(
+            group_list,
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
 
         # Fluorescence Plot
         group_list = self.fluorescence_list
@@ -558,23 +799,39 @@ class larchppt(object):
         filename_format["title"] = group_list[0].title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu_list(group_list, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=None)
-        
+        self.plot_mu_list(
+            group_list,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=None,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
-        self.plot_mu_list(group_list, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=xlim)        
-        
+        self.plot_mu_list(
+            group_list,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k_list(group_list, path=filename.format(
-            **filename_format), resize_factor=resize_factor)                
-        
+        self.plot_k_list(
+            group_list,
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R_list(group_list, path=filename.format(
-            **filename_format), resize_factor=resize_factor)     
+        self.plot_R_list(
+            group_list,
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
 
         # Reference Plot
         group_list = self.reference_list
@@ -582,26 +839,51 @@ class larchppt(object):
         filename_format["title"] = group_list[0].title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu_list(group_list, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=None)
-        
+        self.plot_mu_list(
+            group_list,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=None,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = " ({} to {}eV)".format(*xlim)
-        self.plot_mu_list(group_list, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, xlim=xlim)        
-        
+        self.plot_mu_list(
+            group_list,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            xlim=xlim,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k_list(group_list, path=filename.format(
-            **filename_format), resize_factor=resize_factor)                
-        
+        self.plot_k_list(
+            group_list,
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
+
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R_list(group_list, path=filename.format(
-            **filename_format), resize_factor=resize_factor)    
+        self.plot_R_list(
+            group_list,
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+        )
 
-
-    def gen_plot_summary(self, fig_dir, save_dir=None, name="larch", resize_factor=1.0, add_group=False, recaliberation=False, denergy=0, error_bar = False):
+    def gen_plot_summary(
+        self,
+        fig_dir,
+        save_dir=None,
+        name="larch",
+        resize_factor=1.0,
+        add_group=False,
+        recaliberation=False,
+        denergy=0,
+        error_bar=False,
+    ):
         self.calc_mu()
         self.autobk(self.transmission)
         self.autobk(self.fluorescence)
@@ -610,20 +892,17 @@ class larchppt(object):
         self.xftf(self.transmission)
         self.xftf(self.fluorescence)
         self.xftf(self.reference)
-        
+
         if recaliberation:
             # It is not working well
             self.recaliberation(denergy)
 
         if save_dir is not None:
-            self.save_trf(save_dir+name+".prj")
+            self.save_trf(save_dir + name + ".prj")
 
         filename = "{fig_dir}/{num:05}_{title}{discription}.png"
         filename_format = dict(
-            fig_dir=fig_dir,
-            num=0,
-            title="",
-            discription=" normalized"
+            fig_dir=fig_dir, num=0, title="", discription=" normalized"
         )
 
         discription = ["", " normalized", " k", " R"]
@@ -632,72 +911,148 @@ class larchppt(object):
         filename_format["title"] = "TRF Plot"
         filename_format["num"] += 1
         filename_format["discription"] = discription[0]
-        self.plot_mu_tfr(path=filename.format(
-            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
+        self.plot_mu_tfr(
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            error_bar=error_bar,
+        )
 
         # Transmission Plot
         group = self.transmission
         filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            error_bar=error_bar,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         # Fluorescence Plot
         group = self.fluorescence
         filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            error_bar=error_bar,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         # Reference Plot
         group = self.reference
         filename_format["title"] = group.title
         filename_format["num"] += 1
         filename_format["discription"] = discription[1]
-        self.plot_mu(group, plot_mu="flat", path=filename.format(
-            **filename_format), resize_factor=resize_factor, error_bar=error_bar)
+        self.plot_mu(
+            group,
+            plot_mu="flat",
+            path=filename.format(**filename_format),
+            resize_factor=resize_factor,
+            error_bar=error_bar,
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[2]
-        self.plot_k(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_k(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
 
         filename_format["num"] += 1
         filename_format["discription"] = discription[3]
-        self.plot_R(group, path=filename.format(
-            **filename_format), resize_factor=resize_factor)
+        self.plot_R(
+            group, path=filename.format(**filename_format), resize_factor=resize_factor
+        )
+
+    def merge_group(self, mode="transmission"):
+
+        if mode == "transmission":
+            group = self.transmission
+            group_list = self.transmission_list
+        elif mode == "fluorescence":
+            group = self.fluorescence
+            group_list = self.fluorescence_list
+        elif mode == "reference":
+            group = self.reference
+            group_list = self.reference_list
+        else:
+            raise ValueError(
+                "mode must be 'transmission', 'fluorescence' or 'reference'"
+            )
+
+        group = group.merge(
+            group_list,
+            master=group_list[0],
+            xarray="energy",
+            yarray="mu",
+            kind="cubic",
+            trim=True,
+            calc_yerr=True,
+        )
+
+        self.copy_header(group, group_list[0])
+        self.pre_edge(group)
+
+        self.rebin(mode=mode)
 
     def merge_groups(self):
         # Merge groups
-        self.transmission = merge_groups(self.transmission_list, master=self.transmission_list[0], xarray='energy',
-                                         yarray='mu', kind='cubic', trim=True, calc_yerr=True)
-        self.fluorescence = merge_groups(self.fluorescence_list, master=self.fluorescence_list[0], xarray='energy',
-                                         yarray='mu', kind='cubic', trim=True, calc_yerr=True)
-        self.reference = merge_groups(self.reference_list, master=self.reference_list[0], xarray='energy',
-                                      yarray='mu', kind='cubic', trim=True, calc_yerr=True)
-        
+        self.transmission = merge_groups(
+            self.transmission_list,
+            master=self.transmission_list[0],
+            xarray="energy",
+            yarray="mu",
+            kind="cubic",
+            trim=True,
+            calc_yerr=True,
+        )
+        self.fluorescence = merge_groups(
+            self.fluorescence_list,
+            master=self.fluorescence_list[0],
+            xarray="energy",
+            yarray="mu",
+            kind="cubic",
+            trim=True,
+            calc_yerr=True,
+        )
+        self.reference = merge_groups(
+            self.reference_list,
+            master=self.reference_list[0],
+            xarray="energy",
+            yarray="mu",
+            kind="cubic",
+            trim=True,
+            calc_yerr=True,
+        )
+
         # Copy headers
         self.copy_header(self.transmission, self.transmission_list[0])
         self.copy_header(self.fluorescence, self.fluorescence_list[0])
@@ -710,14 +1065,99 @@ class larchppt(object):
 
         self.rebin()
 
-    def rebin(self):
-        # rebin
-        rebin_xafs(self.transmission.energy, mu=self.transmission.mu, group=self.transmission, e0=None,
-                   pre1=None, pre2=-30, pre_step=2, xanes_step=None, exafs1=50, exafs2=None, exafs_kstep=0.05, method='centroid')
-        rebin_xafs(self.fluorescence.energy, mu=self.fluorescence.mu, group=self.fluorescence, e0=None,
-                   pre1=None, pre2=-30, pre_step=2, xanes_step=None, exafs1=50, exafs2=None, exafs_kstep=0.05, method='centroid')
-        rebin_xafs(self.reference.energy, mu=self.reference.mu, group=self.reference, e0=None,
-                   pre1=None, pre2=-30, pre_step=2, xanes_step=None, exafs1=50, exafs2=None, exafs_kstep=0.05, method='centroid')
+    def rebin(self, mode="trf"):
+        if mode == "trf":
+            rebin_xafs(
+                self.transmission.energy,
+                mu=self.transmission.mu,
+                group=self.transmission,
+                e0=None,
+                pre1=None,
+                pre2=-30,
+                pre_step=2,
+                xanes_step=None,
+                exafs1=50,
+                exafs2=None,
+                exafs_kstep=0.05,
+                method="centroid",
+            )
+            rebin_xafs(
+                self.fluorescence.energy,
+                mu=self.fluorescence.mu,
+                group=self.fluorescence,
+                e0=None,
+                pre1=None,
+                pre2=-30,
+                pre_step=2,
+                xanes_step=None,
+                exafs1=50,
+                exafs2=None,
+                exafs_kstep=0.05,
+                method="centroid",
+            )
+            rebin_xafs(
+                self.reference.energy,
+                mu=self.reference.mu,
+                group=self.reference,
+                e0=None,
+                pre1=None,
+                pre2=-30,
+                pre_step=2,
+                xanes_step=None,
+                exafs1=50,
+                exafs2=None,
+                exafs_kstep=0.05,
+                method="centroid",
+            )
+        elif mode == "transmission":
+            rebin_xafs(
+                self.transmission.energy,
+                mu=self.transmission.mu,
+                group=self.transmission,
+                e0=None,
+                pre1=None,
+                pre2=-30,
+                pre_step=2,
+                xanes_step=None,
+                exafs1=50,
+                exafs2=None,
+                exafs_kstep=0.05,
+                method="centroid",
+            )
+        elif mode == "fluorescence":
+            rebin_xafs(
+                self.fluorescence.energy,
+                mu=self.fluorescence.mu,
+                group=self.fluorescence,
+                e0=None,
+                pre1=None,
+                pre2=-30,
+                pre_step=2,
+                xanes_step=None,
+                exafs1=50,
+                exafs2=None,
+                exafs_kstep=0.05,
+                method="centroid",
+            )
+        elif mode == "reference":
+            rebin_xafs(
+                self.reference.energy,
+                mu=self.reference.mu,
+                group=self.reference,
+                e0=None,
+                pre1=None,
+                pre2=-30,
+                pre_step=2,
+                xanes_step=None,
+                exafs1=50,
+                exafs2=None,
+                exafs_kstep=0.05,
+                method="centroid",
+            )
+        else:
+            raise ValueError(
+                "mode must be 'trf', 'transmission', 'fluorescence' or 'reference'"
+            )
 
     def recaliberation(self, denergy=0):
 
@@ -757,8 +1197,17 @@ class larchppt(object):
 
     # Automation
 
-    def QAS_preanalysis(self, files_path, file_regex=re.compile(r".*[_/](.*)\.[a-zA-Z]+"),
-                        output_dir="./output/", resize_factor=1.0, athena_output_dir="./output/", recaliberation=False, fix_e0=False, prefix = None):
+    def QAS_preanalysis(
+        self,
+        files_path,
+        file_regex=re.compile(r".*[_/](.*)\.[a-zA-Z]+"),
+        output_dir="./output/",
+        resize_factor=1.0,
+        athena_output_dir="./output/",
+        recaliberation=False,
+        fix_e0=False,
+        prefix=None,
+    ):
         """Automatic preanalysis of data collected in QAS Beamline
 
         Args:
@@ -775,54 +1224,107 @@ class larchppt(object):
 
             self.read_data(file)
 
-            save_dir = output_dir+name+"/"
+            save_dir = output_dir + name + "/"
             fig_dir = save_dir + "fig/"
 
             os.makedirs(fig_dir, exist_ok=True)
 
-            self.gen_plot_mu_trf(
-                fig_dir, save_dir=athena_output_dir, name=name, resize_factor=resize_factor, fix_e0=fix_e0)
+            try:
+                self.gen_plot_mu(
+                    fig_dir,
+                    save_dir=athena_output_dir,
+                    name=name,
+                    resize_factor=resize_factor,
+                    fix_e0=fix_e0,
+                    mode="transmission",
+                )
+            except:
+                print("Error in processing transmittion file:", file)
+
+            try:
+                self.gen_plot_mu(
+                    fig_dir,
+                    save_dir=athena_output_dir,
+                    name=name,
+                    resize_factor=resize_factor,
+                    fix_e0=fix_e0,
+                    mode="fluorescence",
+                )
+            except:
+                print("Error in processing in fluorescence. File: ", file)
+
+            try:
+                self.gen_plot_mu(
+                    fig_dir,
+                    save_dir=athena_output_dir,
+                    name=name,
+                    resize_factor=resize_factor,
+                    fix_e0=fix_e0,
+                    mode="reference",
+                )
+            except:
+                print("Error in processing in reference. File: ", file)
 
         # Ouput of merge
 
-        if prefix: 
+        if prefix:
             name = "{} All Spectrum".format(prefix)
         else:
             name = "All Spectrum"
-        save_dir = output_dir+name+"/"
+        save_dir = output_dir + name + "/"
         fig_dir = save_dir + "fig/"
 
         os.makedirs(fig_dir, exist_ok=True)
 
-        self.gen_plot_mu_trf_list(
-            fig_dir, save_dir=athena_output_dir, name=name, resize_factor=resize_factor)
+        try:
+            self.gen_plot_mu_trf_list(
+                fig_dir,
+                save_dir=athena_output_dir,
+                name=name,
+                resize_factor=resize_factor,
+            )
+        except:
+            print("Error in plotting all spectrum. File: ", name)
 
         # Ouput of merge
-        self.merge_groups()
+        try:
+            self.merge_groups()
 
-        if prefix: 
-            name = "{} Merged Spectrum".format(prefix)
-        else:
-            name = "Merged Spectrum"
-        save_dir = output_dir+name+"/"
-        fig_dir = save_dir + "fig/"
+            if prefix:
+                name = "{} Merged Spectrum".format(prefix)
+            else:
+                name = "Merged Spectrum"
+            save_dir = output_dir + name + "/"
+            fig_dir = save_dir + "fig/"
 
-        os.makedirs(fig_dir, exist_ok=True)
+            os.makedirs(fig_dir, exist_ok=True)
 
-        self.gen_plot_summary(
-            fig_dir, save_dir=athena_output_dir, name=name, resize_factor=resize_factor)
+            self.gen_plot_summary(
+                fig_dir,
+                save_dir=athena_output_dir,
+                name=name,
+                resize_factor=resize_factor,
+            )
+        except:
+            print("Error in plotting merged spectrum. File: ", name)
 
         # self.generate_presenation(output_dir=output_dir, ppt_path=ppt_path)
 
-    def generate_presenation(self, output_dir="./output/", ppt_path="./output/preanalysis.pptx", dir_path=None, title_font_size = 30,
-                             title = "Auto Preanalysis of QAS", label_font_size = 18):
+    def generate_presenation(
+        self,
+        output_dir="./output/",
+        ppt_path="./output/preanalysis.pptx",
+        dir_path=None,
+        title_font_size=30,
+        title="Auto Preanalysis of QAS",
+        label_font_size=18,
+    ):
         # initialization
         # presentation = pptemp.pptemp("./template.pptx")
         presentation = pptemp.pptemp()
 
         # Slide 1 Title
-        slide = presentation.add_title_slide(
-            title, str(date.today()))
+        slide = presentation.add_title_slide(title, str(date.today()))
 
         # Create slides from figures with label
         # Set use_bar=False if you don't want the bars to appear
@@ -830,7 +1332,11 @@ class larchppt(object):
             dir_path = output_dir + "/*/fig/"
 
         presentation.add_figure_label_slide(
-            dir_path=dir_path, dir_regex=re.compile(r".*[/_](.*)/.*/"), title_font_size=title_font_size, label_font_size=label_font_size)
+            dir_path=dir_path,
+            dir_regex=re.compile(r".*[/_](.*)/.*/"),
+            title_font_size=title_font_size,
+            label_font_size=label_font_size,
+        )
 
         # save
         os.makedirs(os.path.dirname(ppt_path), exist_ok=True)
@@ -840,11 +1346,24 @@ class larchppt(object):
 def main():
     lp = larchppt()
 
-    lp.QAS_preanalysis(files_path="./Co1/data/*.dat", output_dir="./output/Co1/",
-                       athena_output_dir="./output/Co1/", fix_e0=True, prefix="00000_Co1")
-    lp.generate_presenation(output_dir="./output/Co1/",
-                            ppt_path="./output/Co1_preanalysis.pptx", title_font_size = 20, title = "Preanalysis of Co foil")
+    prefix_list = ["Co1", "Co11"]
+
+    for prefix in prefix_list:
+        lp.QAS_preanalysis(
+            files_path=f"./{prefix}/data/*.dat",
+            output_dir=f"./output/{prefix}/",
+            athena_output_dir=f"./output/{prefix}/",
+            fix_e0=True,
+            prefix=f"00000_{prefix}",
+        )
+
+    lp.generate_presenation(
+        output_dir="./output/Co*/",
+        ppt_path="./output/Co_preanalysis.pptx",
+        title_font_size=20,
+        title="Preanalysis of Co samples",
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

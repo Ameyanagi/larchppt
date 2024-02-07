@@ -1,4 +1,3 @@
-python-pptx
 pandas
 numpy
 lxml
@@ -7,3 +6,4 @@ xraylarch
 tqdm
 watchdog
 opencv-python
+pptemp
